@@ -1,3 +1,6 @@
 *.dfs
 *.z64
 *.sprite
+build/
+*.o
+*.d
