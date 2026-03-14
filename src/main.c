@@ -10,6 +10,40 @@
 #include "lauxlib.h"
 
 surface_t* current_disp = NULL;
+int g_total_score = 0;
+
+void run_minigame(lua_State* L, const char* minigame_path) {
+    if (luaL_dofile(L, minigame_path) == 0) {
+        
+        if (lua_gettop(L) > 0 && lua_isnumber(L, -1)) {
+            int game_score = lua_tointeger(L, -1);
+            
+            g_total_score += game_score;
+            
+            lua_pop(L, 1); 
+            
+            display_context_t disp = display_get();
+            graphics_fill_screen(disp, 0); 
+            
+            char str[128];
+            sprintf(str, "Game Score: %d\nTotal Score: %d", game_score, g_total_score);
+            graphics_draw_text(disp, 20, 20, str);
+            
+            display_show(disp); 
+        }
+    } else {
+        display_context_t disp = display_get();
+        graphics_fill_screen(disp, 0);
+        
+        graphics_draw_text(disp, 10, 10, "LUA ERROR:");
+        graphics_draw_text(disp, 10, 30, lua_tostring(L, -1));
+        display_show(disp);
+        
+        lua_pop(L, 1);
+        
+        while(1) {}
+    }
+}
 
 int l_get_button(lua_State *L) {
     static const char *const button_names[] = {
@@ -211,5 +245,5 @@ int main(void) {
         }
     }
 
-    int status = luaL_dofile(L, "rom:/minigames/pop.lua");
+    run_minigame(L, "rom:/minigames/pop.lua");
 }

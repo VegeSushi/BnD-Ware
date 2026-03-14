@@ -12,6 +12,7 @@ local bubble_y = math.random(20, 240 - 52)
 local state = "intro"
 local state_timer = get_time_ms()
 local time_limit = 4000 -- 4 seconds to win
+local score = 0 -- NEW: Track the score
 
 -- Simple collision function
 function check_collision(x1, y1, w1, h1, x2, y2, w2, h2)
@@ -41,6 +42,7 @@ while true do
         -- Did time run out?
         if time_left <= 0 then
             state = "lose"
+            score = 0 -- You get nothing!
             state_timer = current_time
         else
             -- Movement
@@ -59,6 +61,7 @@ while true do
             if get_button("A") then
                 if check_collision(paw_x, paw_y, 32, 32, bubble_x, bubble_y, 32, 32) then
                     state = "win"
+                    score = 1000 + math.floor(time_left) -- Calculate score based on speed
                     state_timer = current_time
                 end
             end
@@ -78,7 +81,6 @@ while true do
         
         if state == "win" then
             draw_text("SUCCESS!", 130, 110)
-            -- Draw a popped effect? Just text for now.
             draw_text("*POP*", bubble_x, bubble_y) 
         else
             draw_sprite("rom:/sprites/bubble.sprite", bubble_x, bubble_y)
@@ -88,7 +90,7 @@ while true do
         -- Hold the result screen for 1.5 seconds, then exit the microgame
         if current_time - state_timer > 1500 then
             end_frame()
-            return -- This EXITS the Lua script and returns control back to C!
+            return score -- NEW: Return the final score to C!
         end
     end
 
