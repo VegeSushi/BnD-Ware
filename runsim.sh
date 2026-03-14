@@ -10,7 +10,7 @@ if [[ "$1" == "-c" ]]; then
 fi
 
 if [[ ! -f "$SIM" ]]; then
-    echo "Simulator not found. Build it first with ./run.sh -c"
+    echo "Simulator not found. Build it first with ./runsim.sh -c"
     exit 1
 fi
 
