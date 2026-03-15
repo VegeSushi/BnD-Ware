@@ -22,14 +22,18 @@ void run_minigame(lua_State* L, const char* minigame_path) {
             
             lua_pop(L, 1); 
             
+            sprite_t *stars = sprite_load("rom:/sprites/stars.sprite");
             display_context_t disp = display_get();
-            graphics_fill_screen(disp, 0); 
+            graphics_draw_sprite(disp, 0, 0, stars);
             
             char str[128];
             sprintf(str, "Game Score: %d\nTotal Score: %d", game_score, g_total_score);
             graphics_draw_text(disp, 20, 20, str);
             
-            display_show(disp); 
+            display_show(disp);
+            sprite_free(stars);
+
+            wait_ms(2500);
         }
     } else {
         display_context_t disp = display_get();
@@ -171,6 +175,31 @@ void draw_loading_screen(surface_t* disp, int progress) {
     display_show(disp);
 }
 
+void show_about_screen() {
+    surface_t* disp = display_get();
+
+    sprite_t *stars = sprite_load("rom:/sprites/stars.sprite");
+    graphics_draw_sprite(disp, 0, 0, stars);
+
+    sprite_t *qr = sprite_load("rom:/sprites/qr.sprite");
+    graphics_draw_sprite(disp, 100, 45, qr);
+
+    graphics_draw_text(disp, 15, 20, "https://github.com/VegeSushi/BnD-Ware");
+
+    display_show(disp);
+
+    while (1) {
+        joypad_poll();
+        joypad_buttons_t keys = joypad_get_buttons_pressed(JOYPAD_PORT_1);
+
+        if (keys.start || keys.a) {
+            sprite_free(stars);
+            sprite_free(qr);
+            break;
+        }
+    }
+}
+
 int main(void) {
     console_init();
 
@@ -179,6 +208,8 @@ int main(void) {
     display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, FILTERS_RESAMPLE);
 
     surface_t* disp = display_get();
+
+    graphics_fill_screen(disp, 0);
 
     dfs_init(DFS_DEFAULT_LOCATION);
     draw_loading_screen(disp, 1);
@@ -221,29 +252,58 @@ int main(void) {
         sprite_free(logo_sprite);
     }
 
-    bool menu = true;
+    while (1) {
+        bool menu = true;
 
-    while (menu) {
-        for (int i = 0; i <= 173; i++) {
-            sprintf(filename, "rom:/menu/menu_%04d.sprite", i);
+        int selected = 0;
 
-            sprite_t *menu_sprite = sprite_load(filename);
-            disp = display_get();
-            graphics_draw_sprite(disp, 0, 0, menu_sprite);
-            graphics_draw_text(disp, 20, 20, "Bubbles And Doki Ware");
-            display_show(disp);
-            wait_ms(1);
-            sprite_free(menu_sprite);
+        while (menu) {
+            for (int i = 0; i <= 173; i++) {
+                sprintf(filename, "rom:/menu/menu_%04d.sprite", i);
 
-            joypad_poll();
-        	joypad_buttons_t keys = joypad_get_buttons_pressed(JOYPAD_PORT_1);
+                sprite_t *menu_sprite = sprite_load(filename);
+                disp = display_get();
+                graphics_draw_sprite(disp, 0, 0, menu_sprite);
+                graphics_draw_text(disp, 20, 20, "Bubbles And Doki Ware");
+                display_show(disp);
+                wait_ms(1);
+                sprite_free(menu_sprite);
 
-            if (keys.start) {
-                menu = false;
-                break;
+                joypad_poll();
+        	    joypad_buttons_t keys = joypad_get_buttons_pressed(JOYPAD_PORT_1);
+
+                if (selected == 0) {
+                    graphics_draw_text(disp, 20, 60, "> Start");
+                } else {
+                    graphics_draw_text(disp, 20, 60, "  Start");
+                } if (selected == 1) {
+                    graphics_draw_text(disp, 20, 80, "> About");
+                } else {
+                    graphics_draw_text(disp, 20, 80, "  About");
+                }
+
+                if (keys.d_down) {
+                    selected++;
+                    if (selected > 1) selected = 0;
+                }
+
+                if (keys.d_up) {
+                    selected--;
+                    if (selected < 0) selected = 1;
+                }
+
+                if (keys.start || keys.a) {
+                    if (selected == 0) {
+                        menu = false;
+                        break;
+                    }
+                    else if (selected == 1) {
+                        show_about_screen();
+                    }
+                }
             }
         }
-    }
 
-    run_minigame(L, "rom:/minigames/pop.lua");
+        run_minigame(L, "rom:/minigames/pop.lua");
+    }
 }
