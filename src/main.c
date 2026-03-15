@@ -294,6 +294,7 @@ int main(void) {
 
                 if (keys.start || keys.a) {
                     if (selected == 0) {
+                        g_total_score = 0;
                         menu = false;
                         break;
                     }
