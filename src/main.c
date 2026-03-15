@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <libdragon.h>
 #include <stdbool.h>
-#include <stdio.h>
+#include <stdlib.h>
 
 #include "lua.h"
 #include "lualib.h"
@@ -11,6 +11,57 @@
 
 surface_t* current_disp = NULL;
 int g_total_score = 0;
+
+typedef struct {
+    char **filenames;
+    int count;
+} MinigameList;
+
+MinigameList get_minigame_files(const char* dir_path) {
+    MinigameList list = {NULL, 0};
+    dir_t dir_info;
+    
+    if (dir_findfirst(dir_path, &dir_info) != 0) {
+        return list;
+    }
+
+    int capacity = 16;
+    list.filenames = malloc(capacity * sizeof(char*));
+
+    do {
+        if (strcmp(dir_info.d_name, ".") != 0 && strcmp(dir_info.d_name, "..") != 0) {
+            
+            if (list.count >= capacity) {
+                capacity *= 2;
+                list.filenames = realloc(list.filenames, capacity * sizeof(char*));
+            }
+            
+            list.filenames[list.count] = strdup(dir_info.d_name);
+            list.count++;
+        }
+        
+    } while (dir_findnext(dir_path, &dir_info) == 0);
+
+    for (int i = list.count - 1; i > 0; i--) {
+        int j = rand() % (i + 1);
+        char *temp = list.filenames[i];
+        list.filenames[i] = list.filenames[j];
+        list.filenames[j] = temp;
+    }
+
+    return list;
+}
+
+void free_minigame_list(MinigameList *list) {
+    if (list->filenames != NULL) {
+        for (int i = 0; i < list->count; i++) {
+            free(list->filenames[i]);
+        }
+        free(list->filenames);
+        list->filenames = NULL;
+    }
+    list->count = 0;
+}
 
 void run_minigame(lua_State* L, const char* minigame_path) {
     if (luaL_dofile(L, minigame_path) == 0) {
@@ -204,6 +255,7 @@ int main(void) {
     console_init();
 
     timer_init();
+    srand(get_ticks() & 0xFFFFFFFF);
 
     display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, FILTERS_RESAMPLE);
 
@@ -305,6 +357,26 @@ int main(void) {
             }
         }
 
-        run_minigame(L, "rom:/minigames/pop.lua");
+        MinigameList minigames = get_minigame_files("rom:/minigames");
+
+        for (int i = 0; i < minigames.count; i++) {
+            char full_path[256];
+            snprintf(full_path, sizeof(full_path), "rom:/minigames/%s", minigames.filenames[i]);
+            
+            run_minigame(L, full_path);
+        }
+    
+        free_minigame_list(&minigames);
+
+        sprite_t *stars = sprite_load("rom:/sprites/stars.sprite");
+        disp = display_get();
+        graphics_draw_sprite(disp, 0, 0, stars);
+            
+        char str[128];
+        sprintf(str, "Final Score: %d", g_total_score);
+        graphics_draw_text(disp, 20, 20, str);
+        display_show(disp);
+        sprite_free(stars);
+        wait_ms(5000);
     }
 }
